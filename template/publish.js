@@ -703,7 +703,7 @@ exports.publish = function(taffyData, opts, tutorials) {
       return type.indexOf(urlPrefix.prefix) === 0
     })
     return entry ? entry.url : undefined
-  }  
+  }
 
   function resolveClassReferenceInDocStrings (str) {
     const self = this
@@ -751,20 +751,18 @@ exports.publish = function(taffyData, opts, tutorials) {
       doclet.classdesc = resolveClassReferenceInDocStrings(doclet.classdesc)
     }
 
-    // TODO (karl): replace with DOM-manipulation in the generated doc? 
-    // Doesn't work because the HREF element is output verbatim in a <span>..</span> section
-    // if (doclet.params) {
-    //   doclet.params = doclet.params.map(param => {
-    //     if (param.type && param.type.names) {
-    //       param.type.names = param.type.names.map(typeName => resolveClassReferenceInTypeName(typeName))
-    //     }
-    //     return param
-    //   })
-    //   console.log(JSON.stringify(doclet, null, 2))
-    // }
+    if (doclet.params) {
+      doclet.params = doclet.params.map(param => {
+        if (param.type && param.type.names) {
+          param.type.names = param.type.names.map(typeName => resolveClassReferenceInTypeName(typeName))
+        }
+        return param
+      })
+      console.log(JSON.stringify(doclet, null, 2))
+    }
   });
-  
-  
+
+
   var members = helper.getMembers(data);
   members.tutorials = tutorials.children;
 
