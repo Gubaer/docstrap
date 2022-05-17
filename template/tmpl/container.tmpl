@@ -36,8 +36,14 @@
     <?js } ?>
 </header>
 
-
 <article>
+    <?js // -- insert deprecation marker for API V1 -- ?>
+    <?js if (apiVersion === "v1") { ?>
+    <div style="padding: 1rem; margin: 1rem; background-color: #f77e7e">
+    API V1 is <strong>deprecated</strong> and will be removed in 2021. Consider to migrate your scripts to
+    <a href="/api/v2">API V2</a>.
+    <?js } ?>
+    </div>
     <div class="container-overview">
     <?js if (doc.kind === 'module' && doc.modules) { ?>
         <?js if (doc.description) { ?>
@@ -114,8 +120,15 @@
     <?js } ?>
 
     <?js
-        var members = self.find({kind: 'member', memberof: title === 'Global' ? {isUndefined: true} : doc.longname});
-        if (members && members.length && members.forEach) {
+        var members;
+        if (doc.kind  === 'module') {
+            // The JOSM Scripting Plugin API provides members (propertie and functions)
+            // as child elements of modules
+            members = self.find({kind: 'member', memberof: doc.longname});
+        } else {
+            members = self.find({kind: 'member', memberof: title === 'Global' ? {isUndefined: true} : doc.longname});
+        }
+        if (members && members.length && members.forEach) {         
     ?>
         <h3 class="subsection-title">Members</h3>
 

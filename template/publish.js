@@ -255,13 +255,14 @@ function searchData(html) {
   return stripped;
 }
 
-function generate(docType, title, docs, filename, resolveLinks) {
+function generate(docType, title, docs, filename, resolveLinks, apiVersion) {
   resolveLinks = resolveLinks === false ? false : true;
 
   var docData = {
     title: title,
     docs: docs,
-    docType: docType
+    docType: docType,
+    apiVersion
   };
 
   var outpath = path.join(outdir, filename),
@@ -489,6 +490,16 @@ function buildNav(members) {
 exports.publish = function(taffyData, opts, tutorials) {
   data = taffyData;
 
+  // Read API version from the config file
+  let apiVersion;
+  if (opts.configure) {
+    const confJson = JSON.parse(fs.readFileSync(opts.configure))
+    if (confJson.opts && confJson.opts.apiVersion) {
+      apiVersion = confJson.opts.apiVersion
+    }
+  }
+  console.log(`Generating documentation for API ${apiVersion} ...`)
+
   conf['default'] = conf['default'] || {};
 
   var templatePath = opts.template;
@@ -681,6 +692,79 @@ exports.publish = function(taffyData, opts, tutorials) {
     }
   });
 
+  const URL_PREFIXES = [
+    { prefix: 'org.openstreetmap.josm', url: 'http://josm.openstreetmap.de/doc/' },
+    { prefix: 'java.', url: 'http://docs.oracle.com/javase/6/docs/api/' },
+    { prefix: 'javax.swing.', url: 'http://docs.oracle.com/javase/6/docs/api/ ' }
+  ];
+
+  function matchingUrlPrefixForType (type) {
+    const entry = URL_PREFIXES.find(function (urlPrefix) {
+      return type.indexOf(urlPrefix.prefix) === 0
+    })
+    return entry ? entry.url : undefined
+  }  
+
+  function resolveClassReferenceInDocStrings (str) {
+    const self = this
+    if (str == null || str === undefined) return ''
+    return str.replace(/(?:\[(.+?)\])?\{@class +(.+?)\}/gi,
+      function (match, content, longname) {
+        const fqclassname = longname.replace(/\//g, '.')
+        const classname = fqclassname.replace(/.*\.([^.]+)$/, '$1')
+        const urlPrefix = matchingUrlPrefixForType(fqclassname)
+        if (urlPrefix) {
+          const url = urlPrefix + fqclassname.replace(/\./g, '/') + '.html'
+          const link = `<a href="${url}" alt="${fqclassname}" target="javadoc">${classname}</a>`
+          return link
+        } else {
+          return match
+        }
+      }
+    )
+  }
+
+  function resolveClassReferenceInTypeName (className) {
+    const self = this
+    if (className === null || className === undefined) return ''
+    const fqclassname = className.replace(/\//g, '.')
+    const classname = fqclassname.replace(/.*\.([^.]+)$/, '$1')
+    const urlPrefix = matchingUrlPrefixForType(fqclassname)
+    if (urlPrefix) {
+      const url = urlPrefix + fqclassname.replace(/\./g, '/') + '.html'
+      const link = `<a href="${url}" alt="${fqclassname}" target="javadoc">${classname}</a>`
+      return link
+    } else {
+      return className
+    }
+  }
+
+  // resolve references to Java class names
+  data().each(function(doclet) {
+    if (doclet.description) {
+      doclet.description = resolveClassReferenceInDocStrings(doclet.description)
+    }
+    if (doclet.summary) {
+      doclet.summary = resolveClassReferenceInDocStrings(doclet.summary)
+    }
+    if (doclet.classdesc) {
+      doclet.classdesc = resolveClassReferenceInDocStrings(doclet.classdesc)
+    }
+
+    // TODO (karl): replace with DOM-manipulation in the generated doc? 
+    // Doesn't work because the HREF element is output verbatim in a <span>..</span> section
+    // if (doclet.params) {
+    //   doclet.params = doclet.params.map(param => {
+    //     if (param.type && param.type.names) {
+    //       param.type.names = param.type.names.map(typeName => resolveClassReferenceInTypeName(typeName))
+    //     }
+    //     return param
+    //   })
+    //   console.log(JSON.stringify(doclet, null, 2))
+    // }
+  });
+  
+  
   var members = helper.getMembers(data);
   members.tutorials = tutorials.children;
 
@@ -713,7 +797,7 @@ exports.publish = function(taffyData, opts, tutorials) {
   if (members.globals.length) {
     generate('global', 'Global', [{
       kind: 'globalobj'
-    }], globalUrl);
+    }], globalUrl, false, opts.apiVersion);
   }
 
   // some browsers can't make the dropdown work
@@ -721,49 +805,49 @@ exports.publish = function(taffyData, opts, tutorials) {
     generate('module', view.nav.module.title, [{
       kind: 'sectionIndex',
       contents: view.nav.module
-    }], navigationMaster.module.link);
+    }], navigationMaster.module.link, false, opts.apiVersion);
   }
 
   if (view.nav.class && view.nav.class.members.length) {
     generate('class', view.nav.class.title, [{
       kind: 'sectionIndex',
       contents: view.nav.class
-    }], navigationMaster.class.link);
+    }], navigationMaster.class.link, false, opts.apiVersion);
   }
 
   if (view.nav.namespace && view.nav.namespace.members.length) {
     generate('namespace', view.nav.namespace.title, [{
       kind: 'sectionIndex',
       contents: view.nav.namespace
-    }], navigationMaster.namespace.link);
+    }], navigationMaster.namespace.link, false, opts.apiVersion);
   }
 
   if (view.nav.mixin && view.nav.mixin.members.length) {
     generate('mixin', view.nav.mixin.title, [{
       kind: 'sectionIndex',
       contents: view.nav.mixin
-    }], navigationMaster.mixin.link);
+    }], navigationMaster.mixin.link, false, opts.apiVersion);
   }
 
   if (view.nav.interface && view.nav.interface.members.length) {
     generate('interface', view.nav.interface.title, [{
       kind: 'sectionIndex',
       contents: view.nav.interface
-    }], navigationMaster.interface.link);
+    }], navigationMaster.interface.link, false, opts.apiVersion);
   }
 
   if (view.nav.external && view.nav.external.members.length) {
     generate('external', view.nav.external.title, [{
       kind: 'sectionIndex',
       contents: view.nav.external
-    }], navigationMaster.external.link);
+    }], navigationMaster.external.link, false, opts.apiVersion);
   }
 
   if (view.nav.tutorial && view.nav.tutorial.members.length) {
     generate('tutorial', view.nav.tutorial.title, [{
       kind: 'sectionIndex',
       contents: view.nav.tutorial
-    }], navigationMaster.tutorial.link);
+    }], navigationMaster.tutorial.link, false, opts.apiVersion);
   }
 
   // index page displays information from package.json and lists files
@@ -782,7 +866,7 @@ exports.publish = function(taffyData, opts, tutorials) {
         longname: (opts.mainpagetitle) ? opts.mainpagetitle : 'Main Page'
       }]
     ).concat(files),
-    indexUrl);
+    indexUrl, false, opts.apiVersion);
 
   // set up the lists that we'll use to generate pages
   var classes = taffy(members.classes);
@@ -798,42 +882,48 @@ exports.publish = function(taffyData, opts, tutorials) {
         longname: longname
       });
       if (myClasses.length) {
-        generate('class', 'Class: ' + myClasses[0].name, myClasses, helper.longnameToUrl[longname]);
+        generate('class', 'Class: ' + myClasses[0].name, myClasses, helper.longnameToUrl[longname], false, opts.apiVersion);
       }
 
       var myModules = helper.find(modules, {
         longname: longname
       });
       if (myModules.length) {
-        generate('module', 'Module: ' + myModules[0].name, myModules, helper.longnameToUrl[longname]);
+        console.log(`Generating module ${myModules[0].name} ...`)
+        generate('module', 'Module: ' + myModules[0].name, myModules, helper.longnameToUrl[longname],
+        false, opts.apiVersion);
       }
 
       var myNamespaces = helper.find(namespaces, {
         longname: longname
       });
       if (myNamespaces.length) {
-        generate('namespace', 'Namespace: ' + myNamespaces[0].name, myNamespaces, helper.longnameToUrl[longname]);
+        generate('namespace', 'Namespace: ' + myNamespaces[0].name, myNamespaces, helper.longnameToUrl[longname],
+        false, opts.apiVersion);
       }
 
       var myMixins = helper.find(mixins, {
         longname: longname
       });
       if (myMixins.length) {
-        generate('mixin', 'Mixin: ' + myMixins[0].name, myMixins, helper.longnameToUrl[longname]);
+        generate('mixin', 'Mixin: ' + myMixins[0].name, myMixins, helper.longnameToUrl[longname],
+        false, opts.apiVersion);
       }
 
       var myInterfaces = helper.find(interfaces, {
         longname: longname
       });
       if (myInterfaces.length) {
-        generate('interface', 'Interface: ' + myInterfaces[0].name, myInterfaces, helper.longnameToUrl[longname]);
+        generate('interface', 'Interface: ' + myInterfaces[0].name, myInterfaces, helper.longnameToUrl[longname],
+        false, opts.apiVersion);
       }
 
       var myExternals = helper.find(externals, {
         longname: longname
       });
       if (myExternals.length) {
-        generate('external', 'External: ' + myExternals[0].name, myExternals, helper.longnameToUrl[longname]);
+        generate('external', 'External: ' + myExternals[0].name, myExternals, helper.longnameToUrl[longname],
+        false, opts.apiVersion);
       }
     }
   }
