@@ -758,7 +758,7 @@ exports.publish = function(taffyData, opts, tutorials) {
         }
         return param
       })
-      console.log(JSON.stringify(doclet, null, 2))
+      //console.log(JSON.stringify(doclet, null, 2))
     }
   });
 
