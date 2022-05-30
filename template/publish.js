@@ -695,7 +695,7 @@ exports.publish = function(taffyData, opts, tutorials) {
   const URL_PREFIXES = [
     { prefix: 'org.openstreetmap.josm', url: 'http://josm.openstreetmap.de/doc/' },
     { prefix: 'java.', url: 'http://docs.oracle.com/javase/6/docs/api/' },
-    { prefix: 'javax.swing.', url: 'http://docs.oracle.com/javase/6/docs/api/ ' }
+    { prefix: 'javax.swing.', url: 'http://docs.oracle.com/javase/6/docs/api/' }
   ];
 
   function matchingUrlPrefixForType (type) {
@@ -758,7 +758,14 @@ exports.publish = function(taffyData, opts, tutorials) {
         }
         return param
       })
-      //console.log(JSON.stringify(doclet, null, 2))
+    }
+    if (doclet.returns) {
+      doclet.returns = doclet.returns.map(returns => {
+        if (returns.type && returns.type.names) {
+          returns.type.names = returns.type.names.map(name => resolveClassReferenceInTypeName(name))
+        }
+        return returns
+      })
     }
   });
 
