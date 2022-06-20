@@ -228,16 +228,34 @@ function matchingUrlPrefixForType (type) {
  */
 function resolveClassReferenceInTypeName (className) {
   const self = this
-  if (className === null || className === undefined) return ''
-  const fqclassname = className.replace(/\//g, '.')
-  const classname = fqclassname.replace(/.*\.([^.]+)$/, '$1')
-  const urlPrefix = matchingUrlPrefixForType(fqclassname)
-  if (urlPrefix) {
-    const url = urlPrefix + fqclassname.replace(/\./g, '/') + '.html'
-    const link = `<a href="${url}" alt="${fqclassname}" target="javadoc">${classname}</a>`
-    return link
+  if (className === null || className === undefined) {
+    return ''
+  }
+  
+  const arrayPattern = /^Array\.\<([^>]+)>$/i
+  if (className.match(arrayPattern)) {
+    const arrayElementType = className.replace(arrayPattern, '$1')
+    const fqClassName = arrayElementType.replace(/\//g, '.')
+    const simpleName = fqClassName.replace(/.*\.([^.]+)$/, '$1')
+    const urlPrefix = matchingUrlPrefixForType(fqClassName)
+    if (urlPrefix) {
+      const url = urlPrefix + fqClassName.replace(/\./g, '/') + '.html'
+      const link = `<a href="${url}" alt="${fqClassName}" target="javadoc">${simpleName}</a>[]`
+      return link
+    } else {
+      return className
+    }
   } else {
-    return className
+    const fqClassName = className.replace(/\//g, '.')
+    const simpleName = fqClassName.replace(/.*\.([^.]+)$/, '$1')
+    const urlPrefix = matchingUrlPrefixForType(fqClassName)
+    if (urlPrefix) {
+      const url = urlPrefix + fqClassName.replace(/\./g, '/') + '.html'
+      const link = `<a href="${url}" alt="${fqClassName}" target="javadoc">${simpleName}</a>`
+      return link
+    } else {
+      return className
+    }
   }
 }
 
@@ -793,12 +811,15 @@ exports.publish = function(taffyData, opts, tutorials) {
     if (doclet.classdesc) {
       doclet.classdesc = resolveClassReferenceInDocStrings(doclet.classdesc)
     }
-
     if (doclet.params) {
       doclet.params = resolveClassReferencesInTypedDoclets(doclet.params)
     }
     if (doclet.returns) {
       doclet.returns = resolveClassReferencesInTypedDoclets(doclet.returns)
+    }    
+    if (doclet.properties) {
+      doclet.properties = resolveClassReferencesInTypedDoclets(doclet.properties)
+      doclet.properties.forEach(property => console.log(property.type))
     }    
     if (doclet.type && doclet.type.names) {
       doclet.type.names = doclet.type.names.map(typeName => resolveClassReferenceInTypeName(typeName))
