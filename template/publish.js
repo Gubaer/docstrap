@@ -184,17 +184,71 @@ function addSignatureReturns(f) {
   if (navOptions.methodHeadingReturns) {
     var returnTypes = helper.getSignatureReturns(f);
 
-    f.signature = '<span class="signature">' + (f.signature || '') + '</span>' + '<span class="type-signature">' + (returnTypes.length ? ' &rarr; {' + returnTypes.join('|') + '}' : '') + '</span>';
+    f.signature = '<span class="signature">' 
+      + (f.signature || '') 
+      + '</span>' 
+      + '<span class="type-signature">' 
+      + (returnTypes.length ? ' &rarr; {' + returnTypes.join('|') + '}' : '') 
+      + '</span>';
   }
   else {
     f.signature = f.signature || '';
   }
 }
 
-function addSignatureTypes(f) {
-  var types = helper.getSignatureTypes(f);
+/**
+ * the URL prefixes for relevant JavaDoc sites
+ */
+const URL_PREFIXES = [
+  { prefix: 'org.openstreetmap.josm', url: 'http://josm.openstreetmap.de/doc/' },
+  { prefix: 'java.', url: 'http://docs.oracle.com/javase/6/docs/api/' },
+  { prefix: 'javax.swing.', url: 'http://docs.oracle.com/javase/6/docs/api/' }
+];
 
-  f.signature = (f.signature || '') + '<span class="type-signature">' + (types.length ? ' :' + types.join('|') : '') + '</span>';
+/**
+ * Replies the URL which refers to a JavaDoc site for the type name,
+ * or undefined.
+ * 
+ * @param {type} type a fully qualified Java type name  
+ * @returns the url or undefined
+ */
+function matchingUrlPrefixForType (type) {
+  const entry = URL_PREFIXES.find(function (urlPrefix) {
+    return type.indexOf(urlPrefix.prefix) === 0
+  })
+  return entry ? entry.url : undefined
+}
+
+/**
+ * Converts a fully qualified Java class name into a hyperlink which
+ * refers to the matching JavaDoc site.
+ * 
+ * @param {className} className  the class name
+ * @returns the hyperlinked class name
+ */
+function resolveClassReferenceInTypeName (className) {
+  const self = this
+  if (className === null || className === undefined) return ''
+  const fqclassname = className.replace(/\//g, '.')
+  const classname = fqclassname.replace(/.*\.([^.]+)$/, '$1')
+  const urlPrefix = matchingUrlPrefixForType(fqclassname)
+  if (urlPrefix) {
+    const url = urlPrefix + fqclassname.replace(/\./g, '/') + '.html'
+    const link = `<a href="${url}" alt="${fqclassname}" target="javadoc">${classname}</a>`
+    return link
+  } else {
+    return className
+  }
+}
+
+function addSignatureTypes(f) {
+  let types = helper.getSignatureTypes(f)
+    .map(typeName => resolveClassReferenceInTypeName(typeName))
+
+  f.signature = (f.signature || '') 
+    + '<span class="type-signature">' 
+    + (types.length ? ' : ' + types.join('|') : '') 
+    + '</span>';
 }
 
 function addAttribs(f) {
@@ -692,19 +746,6 @@ exports.publish = function(taffyData, opts, tutorials) {
     }
   });
 
-  const URL_PREFIXES = [
-    { prefix: 'org.openstreetmap.josm', url: 'http://josm.openstreetmap.de/doc/' },
-    { prefix: 'java.', url: 'http://docs.oracle.com/javase/6/docs/api/' },
-    { prefix: 'javax.swing.', url: 'http://docs.oracle.com/javase/6/docs/api/' }
-  ];
-
-  function matchingUrlPrefixForType (type) {
-    const entry = URL_PREFIXES.find(function (urlPrefix) {
-      return type.indexOf(urlPrefix.prefix) === 0
-    })
-    return entry ? entry.url : undefined
-  }
-
   function resolveClassReferenceInDocStrings (str) {
     const self = this
     if (str == null || str === undefined) return ''
@@ -724,19 +765,19 @@ exports.publish = function(taffyData, opts, tutorials) {
     )
   }
 
-  function resolveClassReferenceInTypeName (className) {
-    const self = this
-    if (className === null || className === undefined) return ''
-    const fqclassname = className.replace(/\//g, '.')
-    const classname = fqclassname.replace(/.*\.([^.]+)$/, '$1')
-    const urlPrefix = matchingUrlPrefixForType(fqclassname)
-    if (urlPrefix) {
-      const url = urlPrefix + fqclassname.replace(/\./g, '/') + '.html'
-      const link = `<a href="${url}" alt="${fqclassname}" target="javadoc">${classname}</a>`
-      return link
-    } else {
-      return className
+  /**
+   * Replaces class references in the type names of a doclets with URLs referring to 
+   * JavaDoc resources.
+   * 
+   * @param {doclet}} doclet  an array of doclets with a member 'type', i.e. 'returns', 'params', or 'type'
+   * 
+   * @returns the doclet with replaced type names 
+   */
+  function resolveClassReferencesInTypedDoclets(doclets) {
+    if (doclets.type && doclets.type.names) {
+      doclets.type.names = doclets.type.names.map(typeName => resolveClassReferenceInTypeName(typeName))
     }
+    return doclets
   }
 
   // resolve references to Java class names
@@ -752,20 +793,15 @@ exports.publish = function(taffyData, opts, tutorials) {
     }
 
     if (doclet.params) {
-      doclet.params = doclet.params.map(param => {
-        if (param.type && param.type.names) {
-          param.type.names = param.type.names.map(typeName => resolveClassReferenceInTypeName(typeName))
-        }
-        return param
-      })
+      doclet.params = resolveClassReferencesInTypedDoclets(doclet.params)
     }
     if (doclet.returns) {
-      doclet.returns = doclet.returns.map(returns => {
-        if (returns.type && returns.type.names) {
-          returns.type.names = returns.type.names.map(name => resolveClassReferenceInTypeName(name))
-        }
-        return returns
-      })
+      doclet.returns = resolveClassReferencesInTypedDoclets(doclet.returns)
+    }    
+    if (doclet.type && doclet.type.names) {
+      console.log(doclet.type)
+      doclet.type.names = doclet.type.names.map(typeName => resolveClassReferenceInTypeName(typeName))
+      console.log(doclet.type)
     }
   });
 
