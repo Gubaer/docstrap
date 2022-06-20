@@ -799,9 +799,7 @@ exports.publish = function(taffyData, opts, tutorials) {
       doclet.returns = resolveClassReferencesInTypedDoclets(doclet.returns)
     }    
     if (doclet.type && doclet.type.names) {
-      console.log(doclet.type)
       doclet.type.names = doclet.type.names.map(typeName => resolveClassReferenceInTypeName(typeName))
-      console.log(doclet.type)
     }
   });
 
