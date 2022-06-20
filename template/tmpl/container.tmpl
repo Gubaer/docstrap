@@ -40,9 +40,17 @@
     <?js // -- insert deprecation marker for API V1 -- ?>
     <?js if (apiVersion === "v1") { ?>
     <div style="padding: 1rem; margin: 1rem; background-color: #f77e7e">
-    API V1 is <strong>deprecated</strong> and will be removed in 2021. Consider to migrate your scripts to
-    <a href="/api/v2">API V2</a>.
+    API V1 is <strong>deprecated</strong> and will be removed end of 2022. Consider to migrate your scripts to
+    <a href="../../api/v3">API V3</a>.
     <?js } ?>
+
+    <?js // -- insert deprecation marker for API V2 -- ?>
+    <?js if (apiVersion === "v2") { ?>
+    <div style="padding: 1rem; margin: 1rem; background-color: #f77e7e">
+    API V2 is <strong>deprecated</strong> and will be removed end of 2022. Consider to migrate your scripts to
+    <a href="../../api/v3">API V3</a>.
+    <?js } ?>
+    
     </div>
     <div class="container-overview">
     <?js if (doc.kind === 'module' && doc.modules) { ?>
