@@ -769,15 +769,17 @@ exports.publish = function(taffyData, opts, tutorials) {
    * Replaces class references in the type names of a doclets with URLs referring to 
    * JavaDoc resources.
    * 
-   * @param {doclet}} doclet  an array of doclets with a member 'type', i.e. 'returns', 'params', or 'type'
+   * @param {doclets} doclets  an array of doclets with a member 'type', i.e. 'returns', 'params', or 'type'
    * 
-   * @returns the doclet with replaced type names 
+   * @returns the doclets with replaced type names 
    */
   function resolveClassReferencesInTypedDoclets(doclets) {
-    if (doclets.type && doclets.type.names) {
-      doclets.type.names = doclets.type.names.map(typeName => resolveClassReferenceInTypeName(typeName))
-    }
-    return doclets
+    return doclets.map(doclet => {
+      if (doclet.type && doclet.type.names) {
+        doclet.type.names = doclet.type.names.map(typeName => resolveClassReferenceInTypeName(typeName))
+      }
+      return doclet
+    })
   }
 
   // resolve references to Java class names
